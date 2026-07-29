@@ -16,7 +16,8 @@ typedef struct
   int16_t weight;
 } GraySensor_TypeDef;
 
-/* main.h order: L3, L2, L1, M, R1, R2, R3. Inputs are active low. */
+/* main.h order: L3, L2, L1, M, R1, R2, R3.
+ * Black line is GPIO high (active); white background is GPIO low. */
 static const GraySensor_TypeDef gray_sensors[GRAY_SENSOR_COUNT] =
 {
   {L3_GPIO_Port, L3_Pin, -3000},
@@ -127,9 +128,6 @@ static uint8_t LineFollower_ReadGray(int16_t *position)
     if (pin_state == GPIO_PIN_SET)
     {
       raw_mask |= (uint8_t)(1U << index);
-    }
-    else
-    {
       active_mask |= (uint8_t)(1U << index);
       weighted_sum += gray_sensors[index].weight;
       ++active_count;
