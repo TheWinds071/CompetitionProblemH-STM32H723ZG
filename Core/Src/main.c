@@ -29,6 +29,7 @@
 /* USER CODE BEGIN Includes */
 #include "drv8870.h"
 #include "line_follower.h"
+#include "pid_storage.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -131,6 +132,30 @@ int main(void)
                         &htim5, &htim3) != HAL_OK)
   {
     Error_Handler();
+  }
+  {
+    LineFollower_PIDConfigTypeDef pid_config;
+
+    if (LineFollower_GetPIDConfig(&pid_config) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    if (PIDStorage_Init(&hi2c1) == PID_STORAGE_OK)
+    {
+      PIDStorage_StatusTypeDef load_status = PIDStorage_Load(&pid_config);
+      if (load_status == PID_STORAGE_OK)
+      {
+        if (LineFollower_SetPIDConfig(&pid_config) != HAL_OK)
+        {
+          (void)LineFollower_GetPIDConfig(&pid_config);
+          (void)PIDStorage_Save(&pid_config);
+        }
+      }
+      else if (load_status == PID_STORAGE_NOT_FOUND)
+      {
+        (void)PIDStorage_Save(&pid_config);
+      }
+    }
   }
   LineFollower_Start();
   __HAL_TIM_SET_COUNTER(&htim17, 0U);

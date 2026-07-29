@@ -46,6 +46,16 @@ typedef struct
   int16_t right_pwm;
 } LineFollower_StateTypeDef;
 
+typedef struct
+{
+  float steering_kp;
+  float steering_ki;
+  float steering_kd;
+  float speed_kp;
+  float speed_ki;
+  float speed_kd;
+} LineFollower_PIDConfigTypeDef;
+
 HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
                                     DRV8870_HandleTypeDef *right_motor,
                                     TIM_HandleTypeDef *left_encoder,
@@ -54,6 +64,10 @@ void LineFollower_Start(void);
 void LineFollower_Stop(void);
 void LineFollower_Update(void);
 const LineFollower_StateTypeDef *LineFollower_GetState(void);
+HAL_StatusTypeDef LineFollower_GetPIDConfig(
+    LineFollower_PIDConfigTypeDef *config);
+HAL_StatusTypeDef LineFollower_SetPIDConfig(
+    const LineFollower_PIDConfigTypeDef *config);
 
 #ifdef __cplusplus
 }

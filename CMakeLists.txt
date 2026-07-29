@@ -45,6 +45,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         Drivers/AT24CS32/Inc/at24cs32.h
         Drivers/DRV8870/Src/pid.c
         Drivers/DRV8870/Inc/pid.h
+        Drivers/DRV8870/Src/pid_storage.c
+        Drivers/DRV8870/Inc/pid_storage.h
         Drivers/DRV8870/Src/line_follower.c
         Drivers/DRV8870/Inc/line_follower.h
         Drivers/interrupt/Src/interrupt.c

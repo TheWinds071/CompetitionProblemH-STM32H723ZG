@@ -3,6 +3,7 @@
 #include "main.h"
 #include "pid.h"
 
+#include <math.h>
 #include <stddef.h>
 
 #define GRAY_SENSOR_COUNT 7U
@@ -40,6 +41,34 @@ static LineFollower_StateTypeDef control_state;
 static int16_t last_line_position;
 static uint8_t control_initialized;
 static uint8_t control_enabled;
+
+static uint8_t LineFollower_IsPIDConfigValid(
+    const LineFollower_PIDConfigTypeDef *config)
+{
+  if (config == NULL)
+  {
+    return 0U;
+  }
+
+  return (uint8_t)(isfinite(config->steering_kp) &&
+                   isfinite(config->steering_ki) &&
+                   isfinite(config->steering_kd) &&
+                   isfinite(config->speed_kp) &&
+                   isfinite(config->speed_ki) &&
+                   isfinite(config->speed_kd) &&
+                   (config->steering_kp >= 0.0F) &&
+                   (config->steering_kp <= 0.1F) &&
+                   (config->steering_ki >= 0.0F) &&
+                   (config->steering_ki <= 1.0F) &&
+                   (config->steering_kd >= 0.0F) &&
+                   (config->steering_kd <= 0.1F) &&
+                   (config->speed_kp >= 0.0F) &&
+                   (config->speed_kp <= 2000.0F) &&
+                   (config->speed_ki >= 0.0F) &&
+                   (config->speed_ki <= 10000.0F) &&
+                   (config->speed_kd >= 0.0F) &&
+                   (config->speed_kd <= 100.0F));
+}
 
 static float LineFollower_ClampFloat(float value, float minimum, float maximum)
 {
@@ -316,4 +345,59 @@ void LineFollower_Update(void)
 const LineFollower_StateTypeDef *LineFollower_GetState(void)
 {
   return &control_state;
+}
+
+HAL_StatusTypeDef LineFollower_GetPIDConfig(
+    LineFollower_PIDConfigTypeDef *config)
+{
+  uint32_t primask;
+
+  if ((config == NULL) || (control_initialized == 0U))
+  {
+    return HAL_ERROR;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  config->steering_kp = steering_pid.kp;
+  config->steering_ki = steering_pid.ki;
+  config->steering_kd = steering_pid.kd;
+  config->speed_kp = left_speed_pid.kp;
+  config->speed_ki = left_speed_pid.ki;
+  config->speed_kd = left_speed_pid.kd;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef LineFollower_SetPIDConfig(
+    const LineFollower_PIDConfigTypeDef *config)
+{
+  uint32_t primask;
+
+  if ((control_initialized == 0U) ||
+      (LineFollower_IsPIDConfigValid(config) == 0U))
+  {
+    return HAL_ERROR;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  steering_pid.kp = config->steering_kp;
+  steering_pid.ki = config->steering_ki;
+  steering_pid.kd = config->steering_kd;
+  left_speed_pid.kp = config->speed_kp;
+  left_speed_pid.ki = config->speed_ki;
+  left_speed_pid.kd = config->speed_kd;
+  right_speed_pid.kp = config->speed_kp;
+  right_speed_pid.ki = config->speed_ki;
+  right_speed_pid.kd = config->speed_kd;
+  LineFollower_ResetControllers();
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return HAL_OK;
 }
