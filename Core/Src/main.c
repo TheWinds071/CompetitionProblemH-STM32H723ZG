@@ -28,6 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "drv8870.h"
+#include "esp32_pid_protocol.h"
 #include "line_follower.h"
 #include "pid_storage.h"
 /* USER CODE END Includes */
@@ -158,6 +159,10 @@ int main(void)
     }
   }
   LineFollower_Start();
+  if (ESP32PID_Init(&huart4) != HAL_OK)
+  {
+    Error_Handler();
+  }
   __HAL_TIM_SET_COUNTER(&htim17, 0U);
   if (HAL_TIM_Base_Start_IT(&htim17) != HAL_OK)
   {
@@ -169,8 +174,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-
+    ESP32PID_Process();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

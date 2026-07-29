@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 void TIM17_IRQHandler(void);
+void UART4_IRQHandler(void);
 
 #ifdef __cplusplus
 }

@@ -43,6 +43,8 @@ enable_language(C ASM)
 add_executable(${CMAKE_PROJECT_NAME}
         Drivers/AT24CS32/Src/at24cs32.c
         Drivers/AT24CS32/Inc/at24cs32.h
+        Drivers/ESP32_PID/Src/esp32_pid_protocol.c
+        Drivers/ESP32_PID/Inc/esp32_pid_protocol.h
         Drivers/DRV8870/Src/pid.c
         Drivers/DRV8870/Inc/pid.h
         Drivers/DRV8870/Src/pid_storage.c
@@ -68,6 +70,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Drivers/AT24CS32/Inc
+    Drivers/ESP32_PID/Inc
     Drivers/DRV8870/Inc
     Drivers/interrupt/Inc
 )

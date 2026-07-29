@@ -2,6 +2,12 @@
 
 #include "line_follower.h"
 #include "tim.h"
+#include "usart.h"
+
+void UART4_IRQHandler(void)
+{
+  HAL_UART_IRQHandler(&huart4);
+}
 
 void TIM17_IRQHandler(void)
 {
