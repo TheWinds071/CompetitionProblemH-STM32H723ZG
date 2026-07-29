@@ -60,71 +60,75 @@ SDA 和 SCL 是开漏信号，应使用外部上拉电阻。常见起始值为 4
 
 加载时会校验魔数、版本、长度和 CRC，并从有效槽中选择序号较新的记录。保存时写入较旧或无效的槽，随后回读并逐字节校验。EEPROM 的 `0x0000` 至 `0x0067` 区域由 PID 存储模块保留。
 
-## 4. UART 文本协议
+## 4. UART 帧协议
 
-协议使用 ASCII 文本，一条消息以 `\n` 结束，也接受 `\r\n`。字段使用英文逗号分隔，命令区分大小写。每条命令最长 191 字节。
+每个请求和应答都使用相同帧格式：
 
-### 连通测试
+| 区域 | 字节 | 说明 |
+|---|---|---|
+| 包头 | `AA 55` | 两个固定 HEX 字节 |
+| 正文 | UTF-8 | 命令、参数或应答，不包含换行 |
+| 包尾 | `55 AA` | 两个固定 HEX 字节 |
 
-请求：
-
-```text
-PING
-```
-
-应答：
+完整结构为：
 
 ```text
-OK,PONG
+AA 55 + UTF-8 正文 + 55 AA
 ```
 
-### 查询当前参数
+正文最长 191 字节，命令区分大小写，数值和字段使用英文逗号分隔。当前命令只使用 UTF-8 的 ASCII 子集，因此 ESP32 可以直接用字符串生成正文。不要在正文后添加 `\r` 或 `\n`。
 
-请求：
+例如 `PING` 正文编码后的完整串口数据为：
 
 ```text
-PID,GET
+AA 55 50 49 4E 47 55 AA
 ```
 
-应答字段依次为转向 Kp、Ki、Kd、速度 Kp、Ki、Kd：
+### 命令正文
+
+| 功能 | UTF-8 正文 |
+|---|---|
+| 连通测试 | `PING` |
+| 查询当前 PID | `GET` |
+| 修改转向 PID | `TURN,Kp,Ki,Kd` |
+| 修改速度 PID | `SPEED,Kp,Ki,Kd` |
+| 修改全部 PID | `ALL,转向Kp,转向Ki,转向Kd,速度Kp,速度Ki,速度Kd` |
+| 从 EEPROM 重新加载 | `LOAD` |
+| 恢复并保存默认值 | `DEFAULT` |
+
+示例：
 
 ```text
-OK,PID,ALL,0.000700,0.000000,0.000015,220.000000,800.000000,0.000000
+TURN,0.0008,0,0.00002
+SPEED,230,850,0
+ALL,0.0008,0,0.00002,230,850,0
 ```
 
-### 修改转向 PID
+上述每段文本都只是正文，发送时必须在前后加上包头和包尾。例如查询 PID 的完整 HEX 数据为：
 
 ```text
-PID,SET,STEERING,0.0008,0,0.00002
+AA 55 47 45 54 55 AA
 ```
 
-### 修改速度 PID
+### 正常应答正文
+
+| 请求 | 应答正文 |
+|---|---|
+| `PING` | `PONG` |
+| `GET` | `PID,转向Kp,转向Ki,转向Kd,速度Kp,速度Ki,速度Kd` |
+| 参数修改成功 | 返回修改后的 `PID,...` |
+| `LOAD` 成功 | 返回加载后的 `PID,...` |
+| `DEFAULT` 成功 | 返回默认的 `PID,...` |
+
+查询默认参数时，应答正文示例：
 
 ```text
-PID,SET,SPEED,230,850,0
+PID,0.000700,0.000000,0.000015,220.000000,800.000000,0.000000
 ```
 
-### 一次修改全部 PID
+应答同样包含 `AA 55` 包头和 `55 AA` 包尾。
 
-参数顺序为转向 Kp、Ki、Kd、速度 Kp、Ki、Kd：
-
-```text
-PID,SET,ALL,0.0008,0,0.00002,230,850,0
-```
-
-修改成功后返回完整的当前参数。`SET` 命令会立即保存 EEPROM，因此不要以高频率连续发送相同参数，以免无谓消耗 EEPROM 写入寿命。
-
-### 从 EEPROM 重新加载
-
-```text
-PID,LOAD
-```
-
-### 恢复并保存编译默认值
-
-```text
-PID,DEFAULT
-```
+参数修改命令会立即保存 EEPROM，因此不要高频率连续发送相同参数，以免无谓消耗 EEPROM 写入寿命。
 
 ## 5. 参数范围
 
@@ -150,10 +154,10 @@ PID,DEFAULT
 | `ERR,PID_RANGE` | PID 参数超出允许范围 |
 | `ERR,EEPROM` | EEPROM 不在线、记录无效、写入或校验失败 |
 | `ERR,RX_OVERFLOW` | UART 接收环形缓冲区溢出 |
-| `ERR,LINE_TOO_LONG` | 当前命令超过长度限制 |
+| `ERR,FRAME_TOO_LONG` | 当前帧正文超过长度限制 |
 | `ERR,NOT_READY` | 循线控制器尚未初始化 |
 
-收到行长度或接收溢出错误后，应等待错误应答，再重新发送完整命令。
+所有错误应答也使用 `AA 55 + UTF-8 正文 + 55 AA` 格式。收到帧长度或接收溢出错误后，应重新发送完整帧。
 
 ## 7. ESP32 Arduino 示例
 
@@ -162,19 +166,64 @@ PID,DEFAULT
 ```cpp
 HardwareSerial stm32(2);
 
+void sendFrame(const String &body)
+{
+  const uint8_t head[] = {0xAA, 0x55};
+  const uint8_t tail[] = {0x55, 0xAA};
+
+  stm32.write(head, sizeof(head));
+  stm32.write(reinterpret_cast<const uint8_t *>(body.c_str()),
+              body.length());
+  stm32.write(tail, sizeof(tail));
+}
+
 void setup()
 {
   Serial.begin(115200);
   stm32.begin(115200, SERIAL_8N1, 16, 17); // RX=16, TX=17
-  stm32.print("PID,GET\n");
+  sendFrame("GET");
 }
 
 void loop()
 {
-  if (stm32.available())
+  static uint8_t state = 0;
+  static String body;
+
+  while (stm32.available())
   {
-    String response = stm32.readStringUntil('\n');
-    Serial.println(response);
+    uint8_t value = stm32.read();
+
+    if ((state == 0) && (value == 0xAA))
+      state = 1;
+    else if ((state == 1) && (value == 0x55))
+    {
+      body = "";
+      state = 2;
+    }
+    else if ((state == 2) && (value == 0x55))
+      state = 3;
+    else if ((state == 3) && (value == 0xAA))
+    {
+      Serial.println(body);
+      state = 0;
+    }
+    else if ((state == 1) && (value == 0xAA))
+      state = 1;
+    else if (state == 2)
+      body += static_cast<char>(value);
+    else if (state == 3)
+    {
+      body += static_cast<char>(0x55);
+      if (value == 0x55)
+        state = 3;
+      else
+      {
+        body += static_cast<char>(value);
+        state = 2;
+      }
+    }
+    else
+      state = 0;
   }
 }
 ```
