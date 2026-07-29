@@ -28,6 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "drv8870.h"
+#include "line_follower.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -108,6 +109,7 @@ int main(void)
   MX_UART7_Init();
   MX_UART8_Init();
   MX_USART3_UART_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
   if (DRV8870_Init(&motor1_driver, &htim15,
                    TIM_CHANNEL_1, TIM_CHANNEL_2) != DRV8870_OK)
@@ -120,14 +122,30 @@ int main(void)
   {
     Error_Handler();
   }
+
+  HAL_GPIO_WritePin(MOS_5V_GPIO_Port, MOS_5V_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(MOS_12V_GPIO_Port, MOS_12V_Pin, GPIO_PIN_SET);
+  HAL_Delay(20U);
+
+  if (LineFollower_Init(&motor1_driver, &motor2_driver,
+                        &htim5, &htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  LineFollower_Start();
+  __HAL_TIM_SET_COUNTER(&htim17, 0U);
+  if (HAL_TIM_Base_Start_IT(&htim17) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    (void)DRV8870_SetSpeed(&motor1_driver, 600);
-    (void)DRV8870_SetSpeed(&motor2_driver, 600);
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
