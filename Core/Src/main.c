@@ -116,7 +116,7 @@ int main(void)
   }
 
   if (DRV8870_Init(&motor2_driver, &htim24,
-                   TIM_CHANNEL_1, TIM_CHANNEL_2) != DRV8870_OK)
+                   TIM_CHANNEL_2, TIM_CHANNEL_1) != DRV8870_OK)
   {
     Error_Handler();
   }
@@ -126,6 +126,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    (void)DRV8870_SetSpeed(&motor1_driver, 600);
+    (void)DRV8870_SetSpeed(&motor2_driver, 600);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
