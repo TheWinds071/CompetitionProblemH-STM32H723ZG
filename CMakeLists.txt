@@ -7,6 +7,14 @@ cmake_minimum_required(VERSION 3.22)
 # User is free to modify the file as much as necessary
 #
 
+# Use the embedded toolchain by default. This must be set before project() so
+# CLion's regular CMake profiles do not fall back to the host MinGW compiler.
+# An explicitly supplied toolchain still takes precedence.
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE
+        "${CMAKE_CURRENT_LIST_DIR}/cmake/gcc-arm-none-eabi.cmake"
+        CACHE FILEPATH "CMake toolchain file")
+endif()
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -32,7 +40,13 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+add_executable(${CMAKE_PROJECT_NAME}
+        Drivers/DRV8870/Src/pid.c
+        Drivers/DRV8870/Inc/pid.h
+        Drivers/DRV8870/Src/line_follower.c
+        Drivers/DRV8870/Inc/line_follower.h
+        Drivers/interrupt/Src/interrupt.c
+        Drivers/interrupt/Inc/interrupt.h)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -50,6 +64,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Drivers/DRV8870/Inc
+    Drivers/interrupt/Inc
 )
 
 # Add project symbols (macros)
