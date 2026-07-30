@@ -29,9 +29,9 @@ extern "C" {
 /* Stop on contiguous left/right triples or all four for consecutive frames. */
 #define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 
-#define LINE_FOLLOW_STEERING_KP             0.00070F
+#define LINE_FOLLOW_STEERING_KP             0.00045F
 #define LINE_FOLLOW_STEERING_KI             0.0000F
-#define LINE_FOLLOW_STEERING_KD             0.000015F
+#define LINE_FOLLOW_STEERING_KD             0.000003F
 
 #define LINE_FOLLOW_SPEED_KP                220.0F
 #define LINE_FOLLOW_SPEED_KI                800.0F
