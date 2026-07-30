@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stddef.h>
 
-#define GRAY_SENSOR_COUNT 7U
+#define GRAY_SENSOR_COUNT 4U
 #define GRAY_POSITION_LOST 4000
 
 typedef struct
@@ -16,17 +16,15 @@ typedef struct
   int16_t weight;
 } GraySensor_TypeDef;
 
-/* main.h order: L3, L2, L1, M, R1, R2, R3.
- * Black line is GPIO high (active); white background is GPIO low. */
+/* Physical order from left to right: L3, L2, L1, M.
+ * The line is centered when L2 and L1 are both over the black line.
+ * Black line is GPIO low (active); white background is GPIO high. */
 static const GraySensor_TypeDef gray_sensors[GRAY_SENSOR_COUNT] =
 {
   {L3_GPIO_Port, L3_Pin, -3000},
-  {L2_GPIO_Port, L2_Pin, -2000},
-  {L1_GPIO_Port, L1_Pin, -1000},
-  {M_GPIO_Port,  M_Pin,      0},
-  {R1_GPIO_Port, R1_Pin,  1000},
-  {R2_GPIO_Port, R2_Pin,  2000},
-  {R3_GPIO_Port, R3_Pin,  3000}
+  {L2_GPIO_Port, L2_Pin, -1000},
+  {L1_GPIO_Port, L1_Pin,  1000},
+  {M_GPIO_Port,  M_Pin,   3000}
 };
 
 static DRV8870_HandleTypeDef *left_motor_handle;
@@ -128,6 +126,9 @@ static uint8_t LineFollower_ReadGray(int16_t *position)
     if (pin_state == GPIO_PIN_SET)
     {
       raw_mask |= (uint8_t)(1U << index);
+    }
+    else
+    {
       active_mask |= (uint8_t)(1U << index);
       weighted_sum += gray_sensors[index].weight;
       ++active_count;
