@@ -36,10 +36,10 @@ typedef enum
  * Array order defines gray_active_mask bit3..bit0 as M, L1, L2, L3. */
 static const GraySensor_TypeDef gray_sensors[GRAY_SENSOR_COUNT] =
 {
-  {L1_GPIO_Port, L1_Pin,  3000},
+  {L1_GPIO_Port, L1_Pin,  2000},
   {M_GPIO_Port,  M_Pin,   1000},
   {L2_GPIO_Port, L2_Pin, -1000},
-  {L3_GPIO_Port, L3_Pin, -3000}
+  {L3_GPIO_Port, L3_Pin, -2000}
 };
 
 static DRV8870_HandleTypeDef *left_motor_handle;
@@ -73,11 +73,11 @@ static uint8_t LineFollower_IsPIDConfigValid(
                    isfinite(config->speed_ki) &&
                    isfinite(config->speed_kd) &&
                    (config->steering_kp >= 0.0F) &&
-                   (config->steering_kp <= 0.5F) &&
+                   (config->steering_kp <= 10.0F) &&
                    (config->steering_ki >= 0.0F) &&
                    (config->steering_ki <= 1.0F) &&
                    (config->steering_kd >= 0.0F) &&
-                   (config->steering_kd <= 10.0F) &&
+                   (config->steering_kd <= 50.0F) &&
                    (config->speed_kp >= 0.0F) &&
                    (config->speed_kp <= 2000.0F) &&
                    (config->speed_ki >= 0.0F) &&

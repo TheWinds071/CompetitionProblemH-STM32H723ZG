@@ -4,6 +4,8 @@
 #include "tim.h"
 #include "usart.h"
 
+volatile uint32_t times = 0;
+
 void UART4_IRQHandler(void)
 {
   HAL_UART_IRQHandler(&huart4);
@@ -19,5 +21,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM17)
   {
     LineFollower_Update();
+    times++;
   }
 }
