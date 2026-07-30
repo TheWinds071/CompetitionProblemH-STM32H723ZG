@@ -4,6 +4,8 @@
 
 #define AT24CS32_BASE_ADDRESS_7BIT  0x50U
 #define AT24CS32_READY_TRIALS       10U
+#define AT24CS32_WRITE_TIMEOUT_MS   10U
+#define AT24CS32_WRITE_POLL_MS      1U
 
 static uint8_t AT24CS32_IsRangeValid(uint16_t address, uint16_t length)
 {
@@ -19,6 +21,25 @@ static AT24CS32_StatusTypeDef AT24CS32_CheckDevice(
     return AT24CS32_ERROR_PARAMETER;
   }
   return AT24CS32_OK;
+}
+
+static AT24CS32_StatusTypeDef AT24CS32_WaitWriteComplete(
+    AT24CS32_HandleTypeDef *device)
+{
+  uint32_t tick_start = HAL_GetTick();
+
+  while ((HAL_GetTick() - tick_start) < AT24CS32_WRITE_TIMEOUT_MS)
+  {
+    if (HAL_I2C_IsDeviceReady(device->i2c,
+                              device->device_address,
+                              1U,
+                              device->timeout_ms) == HAL_OK)
+    {
+      return AT24CS32_OK;
+    }
+    HAL_Delay(AT24CS32_WRITE_POLL_MS);
+  }
+  return AT24CS32_ERROR_HAL;
 }
 
 AT24CS32_StatusTypeDef AT24CS32_Init(AT24CS32_HandleTypeDef *device,
@@ -119,7 +140,7 @@ AT24CS32_StatusTypeDef AT24CS32_Write(AT24CS32_HandleTypeDef *device,
     {
       return AT24CS32_ERROR_HAL;
     }
-    if (AT24CS32_IsReady(device) != AT24CS32_OK)
+    if (AT24CS32_WaitWriteComplete(device) != AT24CS32_OK)
     {
       return AT24CS32_ERROR_HAL;
     }
