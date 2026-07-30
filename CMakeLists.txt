@@ -51,6 +51,8 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
+        App/Src/task_ui.c
+        App/Inc/task_ui.h
         Drivers/AT24CS32/Src/at24cs32.c
         Drivers/AT24CS32/Inc/at24cs32.h
         Drivers/ESP32_PID/Src/esp32_pid_protocol.c
@@ -81,6 +83,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    App/Inc
     Drivers/AT24CS32/Inc
     Drivers/ESP32_PID/Inc
     Drivers/ST7789/Inc

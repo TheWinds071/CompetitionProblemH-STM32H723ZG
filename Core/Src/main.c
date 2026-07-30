@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "fdcan.h"
 #include "i2c.h"
 #include "spi.h"
@@ -31,6 +32,8 @@
 #include "esp32_pid_protocol.h"
 #include "line_follower.h"
 #include "pid_storage.h"
+#include "st7789.h"
+#include "task_ui.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +56,7 @@
 /* USER CODE BEGIN PV */
 static DRV8870_HandleTypeDef motor1_driver;
 static DRV8870_HandleTypeDef motor2_driver;
+static uint8_t selected_task;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,6 +68,42 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+typedef void (*App_TaskStartFunction)(void);
+
+static void App_StartTask1(void)
+{
+  LineFollower_Start();
+}
+
+/* Replace these placeholders as the remaining task implementations are added. */
+static void App_StartTask2(void) {}
+static void App_StartTask3(void) {}
+static void App_StartTask4(void) {}
+static void App_StartTask5(void) {}
+static void App_StartTask6(void) {}
+
+static const App_TaskStartFunction task_start_functions[TASK_UI_TASK_COUNT] =
+{
+  App_StartTask1,
+  App_StartTask2,
+  App_StartTask3,
+  App_StartTask4,
+  App_StartTask5,
+  App_StartTask6
+};
+
+static void App_StartSelectedTask(uint8_t task_index)
+{
+  if (task_index >= TASK_UI_TASK_COUNT)
+  {
+    return;
+  }
+
+  /* Stop the current motion before handing control to another task. */
+  LineFollower_Stop();
+  task_start_functions[task_index]();
+}
 
 /* USER CODE END 0 */
 
@@ -99,6 +139,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_FDCAN3_Init();
   MX_SPI2_Init();
   MX_SPI5_Init();
@@ -129,6 +170,11 @@ int main(void)
   HAL_GPIO_WritePin(MOS_12V_GPIO_Port, MOS_12V_Pin, GPIO_PIN_SET);
   HAL_Delay(20U);
 
+  if (ST7789_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   if (LineFollower_Init(&motor1_driver, &motor2_driver,
                         &htim5, &htim3) != HAL_OK)
   {
@@ -158,8 +204,12 @@ int main(void)
       }
     }
   }
-  LineFollower_Start();
+  LineFollower_Stop();
   if (ESP32PID_Init(&huart4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (TaskUI_Init() != HAL_OK)
   {
     Error_Handler();
   }
@@ -175,6 +225,10 @@ int main(void)
   while (1)
   {
     ESP32PID_Process();
+    if (TaskUI_Process(&selected_task) != 0U)
+    {
+      App_StartSelectedTask(selected_task);
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
