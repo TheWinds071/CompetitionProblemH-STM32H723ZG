@@ -16,6 +16,9 @@ extern "C" {
 #define LINE_FOLLOW_BASE_SPEED_TICKS        0.45F
 #define LINE_FOLLOW_MAX_SPEED_TICKS         0.70F
 #define LINE_FOLLOW_MAX_STEERING_TICKS      0.20F
+/* Immediate minimum correction when only L2 or only L1 remains on the line. */
+#define LINE_FOLLOW_INNER_MIN_STEERING_TICKS \
+    (LINE_FOLLOW_MAX_STEERING_TICKS * 0.50F)
 #define LINE_FOLLOW_LOST_SEARCH_TICKS       0.25F
 #define LINE_FOLLOW_TEST_PWM_LIMIT          300.0F
 #define LINE_FOLLOW_LOST_STOP_CYCLES        500U

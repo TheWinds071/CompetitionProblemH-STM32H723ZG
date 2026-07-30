@@ -8,6 +8,8 @@
 
 #define GRAY_SENSOR_COUNT 4U
 #define GRAY_POSITION_LOST 4000
+#define GRAY_L2_ACTIVE_MASK (1U << 1U)
+#define GRAY_L1_ACTIVE_MASK (1U << 2U)
 
 typedef struct
 {
@@ -328,6 +330,22 @@ void LineFollower_Update(void)
   steering_correction = PID_Update(&steering_pid,
                                    (float)line_position,
                                    dt_seconds);
+
+  /*
+   * L2 + L1 is the centered state.  When either inner sensor leaves the
+   * black line, guarantee an immediate correction even if the stored Kp is
+   * too small to produce a noticeable wheel-speed difference.
+   */
+  if ((control_state.gray_active_mask == GRAY_L2_ACTIVE_MASK) &&
+      (steering_correction > -LINE_FOLLOW_INNER_MIN_STEERING_TICKS))
+  {
+    steering_correction = -LINE_FOLLOW_INNER_MIN_STEERING_TICKS;
+  }
+  else if ((control_state.gray_active_mask == GRAY_L1_ACTIVE_MASK) &&
+           (steering_correction < LINE_FOLLOW_INNER_MIN_STEERING_TICKS))
+  {
+    steering_correction = LINE_FOLLOW_INNER_MIN_STEERING_TICKS;
+  }
 
   if (control_state.line_detected != 0U)
   {
