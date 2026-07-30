@@ -93,7 +93,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : Button1_Pin Button2_Pin Button3_Pin */
   GPIO_InitStruct.Pin = Button1_Pin|Button2_Pin|Button3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MOS_5V_Pin */
