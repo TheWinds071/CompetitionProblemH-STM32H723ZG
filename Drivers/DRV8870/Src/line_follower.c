@@ -229,6 +229,7 @@ void LineFollower_Start(void)
   left_encoder_previous = __HAL_TIM_GET_COUNTER(left_encoder_handle);
   right_encoder_previous = __HAL_TIM_GET_COUNTER(right_encoder_handle);
   control_state.line_lost_cycles = 0U;
+  control_state.stop_marker_cycles = 0U;
   LineFollower_ResetControllers();
   control_enabled = 1U;
 }
@@ -274,6 +275,18 @@ void LineFollower_Update(void)
       LINE_FOLLOW_RIGHT_ENCODER_SIGN;
 
   control_state.line_detected = LineFollower_ReadGray(&line_position);
+  if (control_state.gray_active_count >= LINE_FOLLOW_STOP_MARKER_SENSORS)
+  {
+    if (control_state.stop_marker_cycles < UINT16_MAX)
+    {
+      ++control_state.stop_marker_cycles;
+    }
+  }
+  else
+  {
+    control_state.stop_marker_cycles = 0U;
+  }
+
   if (control_state.line_detected != 0U)
   {
     control_state.line_lost_cycles = 0U;
@@ -292,6 +305,12 @@ void LineFollower_Update(void)
 
   if (control_enabled == 0U)
   {
+    return;
+  }
+
+  if (control_state.stop_marker_cycles >= LINE_FOLLOW_STOP_MARKER_CYCLES)
+  {
+    LineFollower_Stop();
     return;
   }
 

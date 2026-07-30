@@ -19,6 +19,9 @@ extern "C" {
 #define LINE_FOLLOW_LOST_SEARCH_TICKS       0.25F
 #define LINE_FOLLOW_TEST_PWM_LIMIT          300.0F
 #define LINE_FOLLOW_LOST_STOP_CYCLES        500U
+/* Stop marker: at least three active-low sensors for five consecutive frames. */
+#define LINE_FOLLOW_STOP_MARKER_SENSORS      3U
+#define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 
 #define LINE_FOLLOW_STEERING_KP             0.00070F
 #define LINE_FOLLOW_STEERING_KI             0.0000F
@@ -39,6 +42,7 @@ typedef struct
   uint8_t gray_active_count;
   uint8_t line_detected;
   uint16_t line_lost_cycles;
+  uint16_t stop_marker_cycles;
   int16_t line_position;
   int32_t left_encoder_delta;
   int32_t right_encoder_delta;
