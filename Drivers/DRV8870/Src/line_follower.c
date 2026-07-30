@@ -167,6 +167,9 @@ HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
                                     TIM_HandleTypeDef *left_encoder,
                                     TIM_HandleTypeDef *right_encoder)
 {
+  const float steering_effective_limit =
+      LINE_FOLLOW_BASE_SPEED_TICKS + LINE_FOLLOW_MAX_SPEED_TICKS;
+
   if ((left_motor == NULL) || (right_motor == NULL) ||
       (left_encoder == NULL) || (right_encoder == NULL))
   {
@@ -193,10 +196,10 @@ HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
            LINE_FOLLOW_STEERING_KP,
            LINE_FOLLOW_STEERING_KI,
            LINE_FOLLOW_STEERING_KD,
-           -LINE_FOLLOW_MAX_STEERING_TICKS,
-           LINE_FOLLOW_MAX_STEERING_TICKS,
-           -LINE_FOLLOW_MAX_STEERING_TICKS,
-           LINE_FOLLOW_MAX_STEERING_TICKS,
+           -steering_effective_limit,
+           steering_effective_limit,
+           -steering_effective_limit,
+           steering_effective_limit,
            0.02F);
   PID_Init(&left_speed_pid,
            LINE_FOLLOW_SPEED_KP,

@@ -15,10 +15,8 @@ extern "C" {
 /* Low-speed test: about 10% initial PWM with the default speed Kp. */
 #define LINE_FOLLOW_BASE_SPEED_TICKS        1.35F
 #define LINE_FOLLOW_MAX_SPEED_TICKS         2.00F
-#define LINE_FOLLOW_MAX_STEERING_TICKS      0.60F
 /* Immediate minimum correction when only L3 or only L1 sees the line. */
-#define LINE_FOLLOW_SIDE_MIN_STEERING_TICKS \
-    (LINE_FOLLOW_MAX_STEERING_TICKS * 0.50F)
+#define LINE_FOLLOW_SIDE_MIN_STEERING_TICKS 0.30F
 #define LINE_FOLLOW_TEST_PWM_LIMIT          900.0F
 /* Hold the last valid motion state, then stop after 1.5 s of continuous loss. */
 #define LINE_FOLLOW_LOST_STOP_MS            1500U
