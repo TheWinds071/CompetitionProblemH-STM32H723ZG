@@ -64,7 +64,7 @@ LINE_FOLLOW_MAX_SPEED_TICKS
 | `left_pwm` / `right_pwm` | 速度 PID 最终输出 |
 | `line_position` | 当前黑线位置误差 |
 | `gray_active_mask` / `gray_active_count` | 检测到黑线的传感器和数量 |
-| `stop_marker_cycles` | 三路以上黑线连续出现的帧数 |
+| `stop_marker_cycles` | 三路全部为黑线连续出现的帧数 |
 
 根据现象调整：
 
@@ -94,6 +94,8 @@ LINE_FOLLOW_MAX_SPEED_TICKS
 
 当前三路灰度传感器从左到右为 `L3、L2、L1`，其中 `L2` 位于中间。TASK1 仅在
 `L3 + L2 + L1` 三路全部同时检测到黑线时识别停车标志。
+
+灰度输入为高电平有效：GPIO 为 `1` 表示黑线，GPIO 为 `0` 表示白色背景。
 
 当前控制周期为 1 ms，`LINE_FOLLOW_STOP_MARKER_CYCLES` 为 5，因此连续 5 帧约为
 5 ms。任意一帧不满足三路同时为黑线都会清零计数；达到阈值后，左右电机立即
