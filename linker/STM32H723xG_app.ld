@@ -4,9 +4,11 @@
 
 **  File        : LinkerScript.ld
 **
-**  Author		: STM32CubeMX
+**  Author		: Project application
 **
-**  Abstract    : Linker script for STM32H723ZGTx series
+**  Abstract    : Application linker script for STM32H723ZGTx series.
+**                This file is intentionally kept outside CubeMX output so
+**                code generation cannot remove the DMA buffer section.
 **                1024Kbytes FLASH and 560Kbytes RAM
 **
 **                Set heap size, stack size and stack location according
@@ -226,6 +228,15 @@ SECTIONS
       PROVIDE( __bss_end = .);
   } >DTCMRAM
   PROVIDE( __non_tls_bss_start = ADDR(.bss) );
+
+  /* DMA1/2 cannot access DTCM. Keep DMA buffers in AXI SRAM. */
+  .dma_buffer (NOLOAD) :
+  {
+    . = ALIGN(32);
+    *(.dma_buffer)
+    *(.dma_buffer*)
+    . = ALIGN(32);
+  } >RAM_D1
 
   PROVIDE( __bss_start = __tbss_start );
   PROVIDE( __bss_size = __bss_end - __bss_start );

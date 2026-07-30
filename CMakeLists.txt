@@ -36,6 +36,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+# CubeMX may regenerate its default linker script. Keep application-specific
+# DMA memory placement in a separate linker script that CubeMX does not own.
+set(APP_LINKER_SCRIPT
+    "${CMAKE_CURRENT_LIST_DIR}/linker/STM32H723xG_app.ld")
+string(REPLACE
+    "${CMAKE_CURRENT_LIST_DIR}/STM32H723xG_flash.ld"
+    "${APP_LINKER_SCRIPT}"
+    CMAKE_EXE_LINKER_FLAGS
+    "${CMAKE_EXE_LINKER_FLAGS}")
+
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
@@ -45,6 +55,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         Drivers/AT24CS32/Inc/at24cs32.h
         Drivers/ESP32_PID/Src/esp32_pid_protocol.c
         Drivers/ESP32_PID/Inc/esp32_pid_protocol.h
+        Drivers/ST7789/Src/st7789.c
+        Drivers/ST7789/Inc/st7789.h
         Drivers/DRV8870/Src/pid.c
         Drivers/DRV8870/Inc/pid.h
         Drivers/DRV8870/Src/pid_storage.c
@@ -71,6 +83,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Drivers/AT24CS32/Inc
     Drivers/ESP32_PID/Inc
+    Drivers/ST7789/Inc
     Drivers/DRV8870/Inc
     Drivers/interrupt/Inc
 )
