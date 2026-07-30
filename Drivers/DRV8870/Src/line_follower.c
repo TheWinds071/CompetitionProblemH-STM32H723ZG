@@ -6,12 +6,9 @@
 #include <math.h>
 #include <stddef.h>
 
-#define GRAY_SENSOR_COUNT 3U
-#define GRAY_L3_ACTIVE_MASK (1U << 0U)
+#define GRAY_SENSOR_COUNT 4U
 #define GRAY_L2_ACTIVE_MASK (1U << 1U)
 #define GRAY_L1_ACTIVE_MASK (1U << 2U)
-#define GRAY_STOP_MARKER_MASK \
-    (GRAY_L3_ACTIVE_MASK | GRAY_L2_ACTIVE_MASK | GRAY_L1_ACTIVE_MASK)
 
 typedef struct
 {
@@ -26,14 +23,15 @@ typedef enum
   LINE_FOLLOWER_MODE_STRAIGHT
 } LineFollower_ModeTypeDef;
 
-/* Physical order from left to right: L3, L2, L1.
- * L2 is the center sensor.
+/* Physical order from left to right: L3, L2, L1, M.
+ * The center lies between L2 and L1.
  * Black line is GPIO high (active); white background is GPIO low. */
 static const GraySensor_TypeDef gray_sensors[GRAY_SENSOR_COUNT] =
 {
-  {L3_GPIO_Port, L3_Pin,  2000},
-  {L2_GPIO_Port, L2_Pin,     0},
-  {L1_GPIO_Port, L1_Pin, -2000}
+  {L3_GPIO_Port, L3_Pin,  3000},
+  {L2_GPIO_Port, L2_Pin,  1000},
+  {L1_GPIO_Port, L1_Pin, -1000},
+  {M_GPIO_Port,  M_Pin,  -3000}
 };
 
 static DRV8870_HandleTypeDef *left_motor_handle;
@@ -315,10 +313,11 @@ void LineFollower_Update(void)
   {
     control_state.line_detected = LineFollower_ReadGray(&line_position);
     /*
-     * TASK1 stop marker: all three sensors must see black in each
+     * TASK1 stop marker: at least three sensors must see black in each
      * consecutive confirmation frame.
      */
-    if (control_state.gray_active_mask == GRAY_STOP_MARKER_MASK)
+    if (control_state.gray_active_count >=
+        LINE_FOLLOW_STOP_MARKER_SENSORS)
     {
       if (control_state.stop_marker_cycles < UINT16_MAX)
       {
@@ -373,11 +372,11 @@ void LineFollower_Update(void)
                                        dt_seconds);
 
       /*
-       * L2 is the centered state.  When only L3 or L1 sees the line,
-       * guarantee an immediate correction even if the stored Kp is too
-       * small to produce a noticeable speed difference.
+       * The center lies between L2 and L1.  When only either center-adjacent
+       * sensor sees the line, guarantee an immediate correction even if the
+       * stored Kp is too small to produce a noticeable speed difference.
        */
-      if ((control_state.gray_active_mask == GRAY_L3_ACTIVE_MASK) &&
+      if ((control_state.gray_active_mask == GRAY_L2_ACTIVE_MASK) &&
           (steering_correction < LINE_FOLLOW_SIDE_MIN_STEERING_TICKS))
       {
         steering_correction = LINE_FOLLOW_SIDE_MIN_STEERING_TICKS;

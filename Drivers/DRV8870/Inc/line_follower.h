@@ -15,14 +15,15 @@ extern "C" {
 /* Low-speed test: about 10% initial PWM with the default speed Kp. */
 #define LINE_FOLLOW_BASE_SPEED_TICKS        1.35F
 #define LINE_FOLLOW_MAX_SPEED_TICKS         2.00F
-/* Immediate minimum correction when only L3 or only L1 sees the line. */
+/* Immediate minimum correction when only L2 or only L1 sees the line. */
 #define LINE_FOLLOW_SIDE_MIN_STEERING_TICKS 0.30F
 #define LINE_FOLLOW_TEST_PWM_LIMIT          900.0F
 /* Hold the last valid motion state, then stop after 1.5 s of continuous loss. */
 #define LINE_FOLLOW_LOST_STOP_MS            1500U
 #define LINE_FOLLOW_LOST_STOP_CYCLES \
     (LINE_FOLLOW_LOST_STOP_MS / LINE_FOLLOW_CONTROL_PERIOD_MS)
-/* Stop when L3, L2 and L1 are active-high together for 5 consecutive frames. */
+/* Stop when at least 3 sensors are active-high for 5 consecutive frames. */
+#define LINE_FOLLOW_STOP_MARKER_SENSORS      3U
 #define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 
 #define LINE_FOLLOW_STEERING_KP             0.00070F
