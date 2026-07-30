@@ -230,6 +230,7 @@ void LineFollower_Start(void)
   right_encoder_previous = __HAL_TIM_GET_COUNTER(right_encoder_handle);
   control_state.line_lost_cycles = 0U;
   control_state.stop_marker_cycles = 0U;
+  control_state.stop_marker_tick = 0U;
   LineFollower_ResetControllers();
   control_enabled = 1U;
 }
@@ -310,6 +311,10 @@ void LineFollower_Update(void)
 
   if (control_state.stop_marker_cycles >= LINE_FOLLOW_STOP_MARKER_CYCLES)
   {
+    if (control_state.stop_marker_tick == 0U)
+    {
+      control_state.stop_marker_tick = HAL_GetTick();
+    }
     LineFollower_Stop();
     return;
   }

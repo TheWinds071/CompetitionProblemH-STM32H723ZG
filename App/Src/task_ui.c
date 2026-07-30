@@ -7,6 +7,7 @@
 
 #define TASK_UI_DEBOUNCE_MS       30U
 #define TASK_UI_RENDER_TIMEOUT_MS 1000U
+#define TASK_UI_STOPWATCH_REFRESH_MS 100U
 
 #define TASK_UI_BACKGROUND  ST7789_RGB565(8U, 13U, 24U)
 #define TASK_UI_HEADER      ST7789_RGB565(16U, 42U, 67U)
@@ -24,6 +25,12 @@ typedef struct
   uint32_t candidate_since;
 } TaskUI_ButtonTypeDef;
 
+typedef enum
+{
+  TASK_UI_MODE_SELECTION = 0U,
+  TASK_UI_MODE_RUNNING
+} TaskUI_ModeTypeDef;
+
 static TaskUI_ButtonTypeDef buttons[3] =
 {
   {Button1_GPIO_Port, Button1_Pin, 0U, 0U, 0U},
@@ -36,6 +43,12 @@ static uint16_t framebuffer[ST7789_WIDTH * ST7789_HEIGHT];
 
 static uint8_t selected_index;
 static uint8_t ui_initialized;
+static uint8_t active_index;
+static uint8_t stopwatch_running;
+static TaskUI_ModeTypeDef ui_mode;
+static uint32_t stopwatch_start_tick;
+static uint32_t stopwatch_elapsed_ms;
+static uint32_t stopwatch_last_render_ms;
 
 static void TaskUI_FillRect(uint16_t x,
                             uint16_t y,
@@ -112,6 +125,7 @@ static void TaskUI_GetGlyph(char character, uint8_t glyph[5])
     case 'C': {const uint8_t v[5] = {0x3EU, 0x41U, 0x41U, 0x41U, 0x22U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case 'D': {const uint8_t v[5] = {0x7FU, 0x41U, 0x41U, 0x22U, 0x1CU}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case 'E': {const uint8_t v[5] = {0x7FU, 0x49U, 0x49U, 0x49U, 0x41U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
+    case 'X': {const uint8_t v[5] = {0x63U, 0x14U, 0x08U, 0x14U, 0x63U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case 'I': {const uint8_t v[5] = {0x00U, 0x41U, 0x7FU, 0x41U, 0x00U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case 'K': {const uint8_t v[5] = {0x7FU, 0x08U, 0x14U, 0x22U, 0x41U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case 'L': {const uint8_t v[5] = {0x7FU, 0x40U, 0x40U, 0x40U, 0x40U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
@@ -125,6 +139,7 @@ static void TaskUI_GetGlyph(char character, uint8_t glyph[5])
     case 'W': {const uint8_t v[5] = {0x3FU, 0x40U, 0x38U, 0x40U, 0x3FU}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case 'Y': {const uint8_t v[5] = {0x07U, 0x08U, 0x70U, 0x08U, 0x07U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     case ':': {const uint8_t v[5] = {0x00U, 0x36U, 0x36U, 0x00U, 0x00U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
+    case '.': {const uint8_t v[5] = {0x00U, 0x60U, 0x60U, 0x00U, 0x00U}; for (index = 0U; index < 5U; ++index) glyph[index] = v[index]; break;}
     default:
       break;
   }
@@ -171,7 +186,20 @@ static void TaskUI_DrawText(uint16_t x,
   }
 }
 
-static HAL_StatusTypeDef TaskUI_Render(void)
+static HAL_StatusTypeDef TaskUI_Present(void)
+{
+  if (ST7789_DrawRGB565_DMA(0U,
+                            0U,
+                            ST7789_WIDTH,
+                            ST7789_HEIGHT,
+                            framebuffer) != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+  return ST7789_Wait(TASK_UI_RENDER_TIMEOUT_MS);
+}
+
+static HAL_StatusTypeDef TaskUI_RenderSelection(void)
 {
   uint8_t task;
 
@@ -197,15 +225,50 @@ static HAL_StatusTypeDef TaskUI_Render(void)
   TaskUI_DrawText(15U, 274U, "B1:UP  B2:DOWN", 1U, TASK_UI_MUTED);
   TaskUI_DrawText(61U, 294U, "B3:RUN", 1U, ST7789_COLOR_WHITE);
 
-  if (ST7789_DrawRGB565_DMA(0U,
-                            0U,
-                            ST7789_WIDTH,
-                            ST7789_HEIGHT,
-                            framebuffer) != HAL_OK)
+  return TaskUI_Present();
+}
+
+static HAL_StatusTypeDef TaskUI_RenderStopwatch(void)
+{
+  uint32_t total_deciseconds = stopwatch_elapsed_ms / 100U;
+  uint32_t total_seconds = total_deciseconds / 10U;
+  uint32_t minutes = total_seconds / 60U;
+  uint32_t seconds = total_seconds % 60U;
+  char task_label[] = "TASK 1";
+  char time_label[] = "00:00.0";
+
+  if (minutes > 99U)
   {
-    return HAL_ERROR;
+    minutes = 99U;
+    seconds = 59U;
+    total_deciseconds = 9U;
   }
-  return ST7789_Wait(TASK_UI_RENDER_TIMEOUT_MS);
+
+  task_label[5] = (char)('1' + active_index);
+  time_label[0] = (char)('0' + (minutes / 10U));
+  time_label[1] = (char)('0' + (minutes % 10U));
+  time_label[3] = (char)('0' + (seconds / 10U));
+  time_label[4] = (char)('0' + (seconds % 10U));
+  time_label[6] = (char)('0' + (total_deciseconds % 10U));
+
+  TaskUI_FillRect(0U, 0U, ST7789_WIDTH, ST7789_HEIGHT, TASK_UI_BACKGROUND);
+  TaskUI_FillRect(0U, 0U, ST7789_WIDTH, 44U, TASK_UI_HEADER);
+  TaskUI_DrawText(32U, 11U, task_label, 3U, ST7789_COLOR_WHITE);
+
+  TaskUI_FillRect(10U, 76U, 152U, 132U, TASK_UI_ITEM);
+  TaskUI_DrawBorder(10U, 76U, 152U, 132U, TASK_UI_BORDER);
+  TaskUI_DrawText(23U, 116U, time_label, 3U, TASK_UI_SELECTED);
+  if (stopwatch_running != 0U)
+  {
+    TaskUI_DrawText(68U, 168U, "RUN", 2U, ST7789_COLOR_WHITE);
+  }
+  else
+  {
+    TaskUI_DrawText(62U, 168U, "STOP", 2U, TASK_UI_SELECTED);
+  }
+
+  TaskUI_DrawText(62U, 286U, "B3:EXIT", 1U, ST7789_COLOR_WHITE);
+  return TaskUI_Present();
 }
 
 static uint8_t TaskUI_ReadPressed(const TaskUI_ButtonTypeDef *button)
@@ -240,6 +303,12 @@ HAL_StatusTypeDef TaskUI_Init(void)
   uint32_t now = HAL_GetTick();
 
   selected_index = 0U;
+  active_index = 0U;
+  stopwatch_running = 0U;
+  stopwatch_start_tick = 0U;
+  stopwatch_elapsed_ms = 0U;
+  stopwatch_last_render_ms = 0U;
+  ui_mode = TASK_UI_MODE_SELECTION;
   for (index = 0U; index < 3U; ++index)
   {
     uint8_t pressed = TaskUI_ReadPressed(&buttons[index]);
@@ -248,10 +317,10 @@ HAL_StatusTypeDef TaskUI_Init(void)
     buttons[index].candidate_since = now;
   }
   ui_initialized = 1U;
-  return TaskUI_Render();
+  return TaskUI_RenderSelection();
 }
 
-uint8_t TaskUI_Process(uint8_t *selected_task)
+TaskUI_EventTypeDef TaskUI_Process(uint8_t *selected_task)
 {
   uint32_t now;
   uint8_t up_pressed;
@@ -260,7 +329,7 @@ uint8_t TaskUI_Process(uint8_t *selected_task)
 
   if ((ui_initialized == 0U) || (selected_task == NULL))
   {
-    return 0U;
+    return TASK_UI_EVENT_NONE;
   }
 
   now = HAL_GetTick();
@@ -268,29 +337,77 @@ uint8_t TaskUI_Process(uint8_t *selected_task)
   down_pressed = TaskUI_UpdateButton(&buttons[1], now);
   run_pressed = TaskUI_UpdateButton(&buttons[2], now);
 
+  if (ui_mode == TASK_UI_MODE_RUNNING)
+  {
+    if (stopwatch_running != 0U)
+    {
+      stopwatch_elapsed_ms = (uint32_t)(now - stopwatch_start_tick);
+      if ((uint32_t)(stopwatch_elapsed_ms - stopwatch_last_render_ms) >=
+          TASK_UI_STOPWATCH_REFRESH_MS)
+      {
+        stopwatch_last_render_ms = stopwatch_elapsed_ms;
+        (void)TaskUI_RenderStopwatch();
+      }
+    }
+
+    if (run_pressed != 0U)
+    {
+      if (stopwatch_running != 0U)
+      {
+        stopwatch_elapsed_ms = (uint32_t)(now - stopwatch_start_tick);
+        stopwatch_running = 0U;
+      }
+      ui_mode = TASK_UI_MODE_SELECTION;
+      (void)TaskUI_RenderSelection();
+      return TASK_UI_EVENT_EXIT;
+    }
+    return TASK_UI_EVENT_NONE;
+  }
+
   if (up_pressed != 0U)
   {
     selected_index = (selected_index == 0U) ?
                      (TASK_UI_TASK_COUNT - 1U) :
                      (uint8_t)(selected_index - 1U);
-    (void)TaskUI_Render();
+    (void)TaskUI_RenderSelection();
   }
   else if (down_pressed != 0U)
   {
     selected_index = (uint8_t)((selected_index + 1U) %
                                TASK_UI_TASK_COUNT);
-    (void)TaskUI_Render();
+    (void)TaskUI_RenderSelection();
   }
 
   if (run_pressed != 0U)
   {
     *selected_task = selected_index;
-    return 1U;
+    active_index = selected_index;
+    stopwatch_elapsed_ms = 0U;
+    stopwatch_last_render_ms = 0U;
+    stopwatch_running = 1U;
+    ui_mode = TASK_UI_MODE_RUNNING;
+    (void)TaskUI_RenderStopwatch();
+    stopwatch_start_tick = HAL_GetTick();
+    return TASK_UI_EVENT_START;
   }
-  return 0U;
+  return TASK_UI_EVENT_NONE;
 }
 
 uint8_t TaskUI_GetSelection(void)
 {
   return selected_index;
+}
+
+void TaskUI_StopwatchStopAt(uint32_t stop_tick)
+{
+  if ((ui_initialized == 0U) ||
+      (ui_mode != TASK_UI_MODE_RUNNING) ||
+      (stopwatch_running == 0U))
+  {
+    return;
+  }
+
+  stopwatch_elapsed_ms = (uint32_t)(stop_tick - stopwatch_start_tick);
+  stopwatch_running = 0U;
+  (void)TaskUI_RenderStopwatch();
 }

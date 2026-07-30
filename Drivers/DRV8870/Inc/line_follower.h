@@ -43,6 +43,7 @@ typedef struct
   uint8_t line_detected;
   uint16_t line_lost_cycles;
   uint16_t stop_marker_cycles;
+  uint32_t stop_marker_tick;
   int16_t line_position;
   int32_t left_encoder_delta;
   int32_t right_encoder_delta;

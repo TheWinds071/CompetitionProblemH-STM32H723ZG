@@ -224,10 +224,24 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    TaskUI_EventTypeDef task_ui_event;
+
     ESP32PID_Process();
-    if (TaskUI_Process(&selected_task) != 0U)
+    task_ui_event = TaskUI_Process(&selected_task);
+    if (task_ui_event == TASK_UI_EVENT_START)
     {
       App_StartSelectedTask(selected_task);
+    }
+    else if (task_ui_event == TASK_UI_EVENT_EXIT)
+    {
+      LineFollower_Stop();
+    }
+
+    if ((selected_task == 0U) &&
+        (LineFollower_GetState()->stop_marker_tick != 0U))
+    {
+      TaskUI_StopwatchStopAt(
+          LineFollower_GetState()->stop_marker_tick);
     }
     /* USER CODE END WHILE */
 
