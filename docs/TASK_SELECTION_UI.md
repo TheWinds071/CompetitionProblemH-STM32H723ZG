@@ -25,7 +25,9 @@ TASK1 检测到持续停车标志并刹车后，秒表会立即冻结；仍可�
 任务入口位于 `Core/Src/main.c`：
 
 - `App_StartTask1()` 已连接 `LineFollower_Start()`；
-- `App_StartTask2()` 到 `App_StartTask6()` 是预留入口；
+- `App_StartTask2()` 到 `App_StartTask5()` 是预留入口；
+- `App_StartTask6()` 使用当前基础速度启动编码器闭环直行，忽略灰度循线、
+  丢线停车和停车标志；
 - 每次确认新任务前都会先调用 `LineFollower_Stop()`，避免切换任务时电机继续执行旧任务。
 
 增加任务代码时，将对应的 `App_StartTaskN()` 函数体替换为实际启动逻辑即可。

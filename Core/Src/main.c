@@ -81,7 +81,10 @@ static void App_StartTask2(void) {}
 static void App_StartTask3(void) {}
 static void App_StartTask4(void) {}
 static void App_StartTask5(void) {}
-static void App_StartTask6(void) {}
+static void App_StartTask6(void)
+{
+  LineFollower_StartStraight();
+}
 
 static const App_TaskStartFunction task_start_functions[TASK_UI_TASK_COUNT] =
 {

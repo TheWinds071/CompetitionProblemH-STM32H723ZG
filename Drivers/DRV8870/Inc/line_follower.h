@@ -71,6 +71,7 @@ HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
                                     TIM_HandleTypeDef *left_encoder,
                                     TIM_HandleTypeDef *right_encoder);
 void LineFollower_Start(void);
+void LineFollower_StartStraight(void);
 void LineFollower_Stop(void);
 void LineFollower_Update(void);
 const LineFollower_StateTypeDef *LineFollower_GetState(void);
