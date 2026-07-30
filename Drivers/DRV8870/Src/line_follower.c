@@ -9,6 +9,9 @@
 #define GRAY_SENSOR_COUNT 4U
 #define GRAY_L2_ACTIVE_MASK (1U << 1U)
 #define GRAY_L1_ACTIVE_MASK (1U << 2U)
+#define GRAY_STOP_LEFT_MASK  0x07U
+#define GRAY_STOP_RIGHT_MASK 0x0EU
+#define GRAY_STOP_ALL_MASK   0x0FU
 
 typedef struct
 {
@@ -123,7 +126,7 @@ static int32_t LineFollower_ReadEncoderDelta(TIM_HandleTypeDef *encoder,
   return delta;
 }
 
-static uint8_t LineFollower_ReadGray(int16_t *position)
+static void LineFollower_ReadGray(int16_t *position)
 {
   int32_t weighted_sum = 0;
   uint8_t raw_mask = 0U;
@@ -154,11 +157,38 @@ static uint8_t LineFollower_ReadGray(int16_t *position)
 
   if (active_count == 0U)
   {
-    return 0U;
+    return;
   }
 
   *position = (int16_t)(weighted_sum / active_count);
-  return 1U;
+}
+
+static uint8_t LineFollower_IsValidGrayPattern(uint8_t active_mask)
+{
+  switch (active_mask)
+  {
+    case 0x01U:
+    case 0x02U:
+    case 0x03U:
+    case 0x04U:
+    case 0x06U:
+    case 0x07U:
+    case 0x08U:
+    case 0x0CU:
+    case 0x0EU:
+    case 0x0FU:
+      return 1U;
+
+    default:
+      return 0U;
+  }
+}
+
+static uint8_t LineFollower_IsStopMarker(uint8_t active_mask)
+{
+  return (uint8_t)((active_mask == GRAY_STOP_LEFT_MASK) ||
+                   (active_mask == GRAY_STOP_RIGHT_MASK) ||
+                   (active_mask == GRAY_STOP_ALL_MASK));
 }
 
 static void LineFollower_ResetControllers(void)
@@ -245,6 +275,7 @@ static void LineFollower_StartMode(LineFollower_ModeTypeDef mode)
 
   left_encoder_previous = __HAL_TIM_GET_COUNTER(left_encoder_handle);
   right_encoder_previous = __HAL_TIM_GET_COUNTER(right_encoder_handle);
+  control_state.gray_invalid_cycles = 0U;
   control_state.line_lost_cycles = 0U;
   control_state.stop_marker_cycles = 0U;
   control_state.stop_marker_tick = 0U;
@@ -319,13 +350,15 @@ void LineFollower_Update(void)
   }
   else
   {
-    control_state.line_detected = LineFollower_ReadGray(&line_position);
+    LineFollower_ReadGray(&line_position);
+    control_state.line_detected =
+        LineFollower_IsValidGrayPattern(control_state.gray_active_mask);
+
     /*
-     * TASK1 stop marker: at least three sensors must see black in each
-     * consecutive confirmation frame.
+     * The solid stop line can only produce a contiguous group of three
+     * sensors or all four sensors.
      */
-    if (control_state.gray_active_count >=
-        LINE_FOLLOW_STOP_MARKER_SENSORS)
+    if (LineFollower_IsStopMarker(control_state.gray_active_mask) != 0U)
     {
       if (control_state.stop_marker_cycles < UINT16_MAX)
       {
@@ -339,14 +372,32 @@ void LineFollower_Update(void)
 
     if (control_state.line_detected != 0U)
     {
+      control_state.gray_invalid_cycles = 0U;
       control_state.line_lost_cycles = 0U;
       last_line_position = line_position;
     }
     else
     {
-      if (control_state.line_lost_cycles < UINT16_MAX)
+      if (control_state.gray_active_mask == 0U)
       {
-        ++control_state.line_lost_cycles;
+        control_state.gray_invalid_cycles = 0U;
+        if (control_state.line_lost_cycles < UINT16_MAX)
+        {
+          ++control_state.line_lost_cycles;
+        }
+      }
+      else
+      {
+        if (control_state.gray_invalid_cycles < UINT16_MAX)
+        {
+          ++control_state.gray_invalid_cycles;
+        }
+        if ((control_state.gray_invalid_cycles >
+             LINE_FOLLOW_INVALID_HOLD_CYCLES) &&
+            (control_state.line_lost_cycles < UINT16_MAX))
+        {
+          ++control_state.line_lost_cycles;
+        }
       }
       line_position = last_line_position;
     }

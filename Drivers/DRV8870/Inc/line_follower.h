@@ -18,12 +18,15 @@ extern "C" {
 /* Immediate minimum correction when only L2 or only L1 sees the line. */
 #define LINE_FOLLOW_SIDE_MIN_STEERING_TICKS 0.30F
 #define LINE_FOLLOW_TEST_PWM_LIMIT          900.0F
+/* Ignore short non-contiguous patterns before treating them as line loss. */
+#define LINE_FOLLOW_INVALID_HOLD_MS         20U
+#define LINE_FOLLOW_INVALID_HOLD_CYCLES \
+    (LINE_FOLLOW_INVALID_HOLD_MS / LINE_FOLLOW_CONTROL_PERIOD_MS)
 /* Hold the last valid motion state, then stop after 1.5 s of continuous loss. */
 #define LINE_FOLLOW_LOST_STOP_MS            1500U
 #define LINE_FOLLOW_LOST_STOP_CYCLES \
     (LINE_FOLLOW_LOST_STOP_MS / LINE_FOLLOW_CONTROL_PERIOD_MS)
-/* Stop when at least 3 active-low sensors see black for 5 consecutive frames. */
-#define LINE_FOLLOW_STOP_MARKER_SENSORS      3U
+/* Stop on contiguous left/right triples or all four for consecutive frames. */
 #define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 
 #define LINE_FOLLOW_STEERING_KP             0.00070F
@@ -44,6 +47,7 @@ typedef struct
   uint8_t gray_active_mask;
   uint8_t gray_active_count;
   uint8_t line_detected;
+  uint16_t gray_invalid_cycles;
   uint16_t line_lost_cycles;
   uint16_t stop_marker_cycles;
   uint32_t stop_marker_tick;
