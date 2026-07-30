@@ -307,14 +307,14 @@ void LineFollower_Update(void)
 
   if (control_state.line_detected != 0U)
   {
-    left_target = LINE_FOLLOW_BASE_SPEED_TICKS + steering_correction;
-    right_target = LINE_FOLLOW_BASE_SPEED_TICKS - steering_correction;
+    left_target = LINE_FOLLOW_BASE_SPEED_TICKS - steering_correction;
+    right_target = LINE_FOLLOW_BASE_SPEED_TICKS + steering_correction;
   }
   else
   {
     float search_direction = (line_position >= 0) ? 1.0F : -1.0F;
-    left_target = LINE_FOLLOW_LOST_SEARCH_TICKS * search_direction;
-    right_target = -LINE_FOLLOW_LOST_SEARCH_TICKS * search_direction;
+    left_target = -LINE_FOLLOW_LOST_SEARCH_TICKS * search_direction;
+    right_target = LINE_FOLLOW_LOST_SEARCH_TICKS * search_direction;
   }
 
   left_target = LineFollower_ClampFloat(left_target,
