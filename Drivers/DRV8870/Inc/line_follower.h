@@ -12,10 +12,12 @@ extern "C" {
 
 /* All speed values are encoder counts per 1 ms control period. */
 #define LINE_FOLLOW_CONTROL_PERIOD_MS       1U
-#define LINE_FOLLOW_BASE_SPEED_TICKS        2.5F
-#define LINE_FOLLOW_MAX_SPEED_TICKS         4.5F
-#define LINE_FOLLOW_MAX_STEERING_TICKS      2.0F
-#define LINE_FOLLOW_LOST_SEARCH_TICKS       1.2F
+/* Low-speed test: about 10% initial PWM with the default speed Kp. */
+#define LINE_FOLLOW_BASE_SPEED_TICKS        0.45F
+#define LINE_FOLLOW_MAX_SPEED_TICKS         0.70F
+#define LINE_FOLLOW_MAX_STEERING_TICKS      0.20F
+#define LINE_FOLLOW_LOST_SEARCH_TICKS       0.25F
+#define LINE_FOLLOW_TEST_PWM_LIMIT          300.0F
 #define LINE_FOLLOW_LOST_STOP_CYCLES        500U
 
 #define LINE_FOLLOW_STEERING_KP             0.00070F
@@ -28,7 +30,7 @@ extern "C" {
 
 /* Change either sign to -1 if its forward encoder count is negative. */
 #define LINE_FOLLOW_LEFT_ENCODER_SIGN       1
-#define LINE_FOLLOW_RIGHT_ENCODER_SIGN      1
+#define LINE_FOLLOW_RIGHT_ENCODER_SIGN      (-1)
 
 typedef struct
 {
