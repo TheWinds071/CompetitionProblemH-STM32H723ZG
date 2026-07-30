@@ -13,17 +13,18 @@ extern "C" {
 /* All speed values are encoder counts per 1 ms control period. */
 #define LINE_FOLLOW_CONTROL_PERIOD_MS       1U
 /* Low-speed test: about 10% initial PWM with the default speed Kp. */
-#define LINE_FOLLOW_BASE_SPEED_TICKS        0.45F
-#define LINE_FOLLOW_MAX_SPEED_TICKS         0.70F
-#define LINE_FOLLOW_MAX_STEERING_TICKS      0.20F
-/* Immediate minimum correction when only L2 or only L1 remains on the line. */
-#define LINE_FOLLOW_INNER_MIN_STEERING_TICKS \
+#define LINE_FOLLOW_BASE_SPEED_TICKS        1.35F
+#define LINE_FOLLOW_MAX_SPEED_TICKS         2.00F
+#define LINE_FOLLOW_MAX_STEERING_TICKS      0.60F
+/* Immediate minimum correction when only L3 or only L1 sees the line. */
+#define LINE_FOLLOW_SIDE_MIN_STEERING_TICKS \
     (LINE_FOLLOW_MAX_STEERING_TICKS * 0.50F)
-#define LINE_FOLLOW_LOST_SEARCH_TICKS       0.25F
-#define LINE_FOLLOW_TEST_PWM_LIMIT          300.0F
-#define LINE_FOLLOW_LOST_STOP_CYCLES        500U
-/* Stop marker: at least three active-low sensors for five consecutive frames. */
-#define LINE_FOLLOW_STOP_MARKER_SENSORS      3U
+#define LINE_FOLLOW_TEST_PWM_LIMIT          900.0F
+/* Hold the last valid motion state, then stop after 1.5 s of continuous loss. */
+#define LINE_FOLLOW_LOST_STOP_MS            1500U
+#define LINE_FOLLOW_LOST_STOP_CYCLES \
+    (LINE_FOLLOW_LOST_STOP_MS / LINE_FOLLOW_CONTROL_PERIOD_MS)
+/* Stop marker: L3, L2 and L1 active-low together for consecutive frames. */
 #define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 
 #define LINE_FOLLOW_STEERING_KP             0.00070F

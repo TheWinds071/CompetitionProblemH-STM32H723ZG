@@ -92,15 +92,12 @@ LINE_FOLLOW_MAX_SPEED_TICKS
 
 ## 6. 停车标志
 
-TASK1 将至少三路同时检测到黑线视为停车标志：
+当前三路灰度传感器从左到右为 `L3、L2、L1`，其中 `L2` 位于中间。TASK1 仅在
+`L3 + L2 + L1` 三路全部同时检测到黑线时识别停车标志。
 
-```c
-#define LINE_FOLLOW_STOP_MARKER_SENSORS 3U
-#define LINE_FOLLOW_STOP_MARKER_CYCLES  5U
-```
-
-当前控制周期为 1 ms，因此连续 5 帧约为 5 ms。任意一帧少于三路黑线都会清零计数；
-达到阈值后，左右电机立即进入 DRV8870 制动状态。
+当前控制周期为 1 ms，`LINE_FOLLOW_STOP_MARKER_CYCLES` 为 5，因此连续 5 帧约为
+5 ms。任意一帧不满足三路同时为黑线都会清零计数；达到阈值后，左右电机立即
+进入 DRV8870 制动状态。
 
 高速时停车距离主要由车速、轮胎附着力和车辆惯性决定。减小确认帧数只能缩短识别延迟，
 不能消除机械制动距离。

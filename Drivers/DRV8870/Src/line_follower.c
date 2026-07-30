@@ -6,10 +6,12 @@
 #include <math.h>
 #include <stddef.h>
 
-#define GRAY_SENSOR_COUNT 4U
-#define GRAY_POSITION_LOST 4000
+#define GRAY_SENSOR_COUNT 3U
+#define GRAY_L3_ACTIVE_MASK (1U << 0U)
 #define GRAY_L2_ACTIVE_MASK (1U << 1U)
 #define GRAY_L1_ACTIVE_MASK (1U << 2U)
+#define GRAY_STOP_MARKER_MASK \
+    (GRAY_L3_ACTIVE_MASK | GRAY_L2_ACTIVE_MASK | GRAY_L1_ACTIVE_MASK)
 
 typedef struct
 {
@@ -24,15 +26,14 @@ typedef enum
   LINE_FOLLOWER_MODE_STRAIGHT
 } LineFollower_ModeTypeDef;
 
-/* Physical order from left to right: L3, L2, L1, M.
- * The line is centered when L2 and L1 are both over the black line.
+/* Physical order from left to right: L3, L2, L1.
+ * L2 is the center sensor.
  * Black line is GPIO low (active); white background is GPIO high. */
 static const GraySensor_TypeDef gray_sensors[GRAY_SENSOR_COUNT] =
 {
-  {L3_GPIO_Port, L3_Pin, -3000},
-  {L2_GPIO_Port, L2_Pin, -1000},
-  {L1_GPIO_Port, L1_Pin,  1000},
-  {M_GPIO_Port,  M_Pin,   3000}
+  {L3_GPIO_Port, L3_Pin,  2000},
+  {L2_GPIO_Port, L2_Pin,     0},
+  {L1_GPIO_Port, L1_Pin, -2000}
 };
 
 static DRV8870_HandleTypeDef *left_motor_handle;
@@ -246,6 +247,9 @@ static void LineFollower_StartMode(LineFollower_ModeTypeDef mode)
   control_state.gray_active_count = 0U;
   control_state.line_detected = 0U;
   control_state.line_position = 0;
+  control_state.left_target_speed = 0.0F;
+  control_state.right_target_speed = 0.0F;
+  last_line_position = 0;
   LineFollower_ResetControllers();
   control_mode = mode;
   control_enabled = 1U;
@@ -310,7 +314,11 @@ void LineFollower_Update(void)
   else
   {
     control_state.line_detected = LineFollower_ReadGray(&line_position);
-    if (control_state.gray_active_count >= LINE_FOLLOW_STOP_MARKER_SENSORS)
+    /*
+     * TASK1 stop marker: all three sensors must see black.
+     */
+    if ((control_state.gray_active_mask & GRAY_STOP_MARKER_MASK) ==
+        GRAY_STOP_MARKER_MASK)
     {
       if (control_state.stop_marker_cycles < UINT16_MAX)
       {
@@ -333,8 +341,7 @@ void LineFollower_Update(void)
       {
         ++control_state.line_lost_cycles;
       }
-      line_position = (last_line_position >= 0) ?
-                      GRAY_POSITION_LOST : -GRAY_POSITION_LOST;
+      line_position = last_line_position;
     }
     control_state.line_position = line_position;
 
@@ -359,36 +366,39 @@ void LineFollower_Update(void)
       return;
     }
 
-    steering_correction = PID_Update(&steering_pid,
-                                     (float)line_position,
-                                     dt_seconds);
-
-    /*
-     * L2 + L1 is the centered state.  When either inner sensor leaves the
-     * black line, guarantee an immediate correction even if the stored Kp is
-     * too small to produce a noticeable wheel-speed difference.
-     */
-    if ((control_state.gray_active_mask == GRAY_L2_ACTIVE_MASK) &&
-        (steering_correction > -LINE_FOLLOW_INNER_MIN_STEERING_TICKS))
-    {
-      steering_correction = -LINE_FOLLOW_INNER_MIN_STEERING_TICKS;
-    }
-    else if ((control_state.gray_active_mask == GRAY_L1_ACTIVE_MASK) &&
-             (steering_correction < LINE_FOLLOW_INNER_MIN_STEERING_TICKS))
-    {
-      steering_correction = LINE_FOLLOW_INNER_MIN_STEERING_TICKS;
-    }
-
     if (control_state.line_detected != 0U)
     {
+      steering_correction = PID_Update(&steering_pid,
+                                       (float)line_position,
+                                       dt_seconds);
+
+      /*
+       * L2 is the centered state.  When only L3 or L1 sees the line,
+       * guarantee an immediate correction even if the stored Kp is too
+       * small to produce a noticeable speed difference.
+       */
+      if ((control_state.gray_active_mask == GRAY_L3_ACTIVE_MASK) &&
+          (steering_correction < LINE_FOLLOW_SIDE_MIN_STEERING_TICKS))
+      {
+        steering_correction = LINE_FOLLOW_SIDE_MIN_STEERING_TICKS;
+      }
+      else if ((control_state.gray_active_mask == GRAY_L1_ACTIVE_MASK) &&
+               (steering_correction > -LINE_FOLLOW_SIDE_MIN_STEERING_TICKS))
+      {
+        steering_correction = -LINE_FOLLOW_SIDE_MIN_STEERING_TICKS;
+      }
+
       left_target = LINE_FOLLOW_BASE_SPEED_TICKS - steering_correction;
       right_target = LINE_FOLLOW_BASE_SPEED_TICKS + steering_correction;
     }
     else
     {
-      float search_direction = (line_position >= 0) ? 1.0F : -1.0F;
-      left_target = -LINE_FOLLOW_LOST_SEARCH_TICKS * search_direction;
-      right_target = LINE_FOLLOW_LOST_SEARCH_TICKS * search_direction;
+      /*
+       * Keep the last valid motion command while the line is temporarily
+       * missing.  The wheel-speed PID loops remain active.
+       */
+      left_target = control_state.left_target_speed;
+      right_target = control_state.right_target_speed;
     }
   }
 
