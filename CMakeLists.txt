@@ -57,6 +57,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         Drivers/AT24CS32/Inc/at24cs32.h
         Drivers/ESP32_PID/Src/esp32_pid_protocol.c
         Drivers/ESP32_PID/Inc/esp32_pid_protocol.h
+        Drivers/ICM45686/Src/icm45686.c
+        Drivers/ICM45686/Inc/icm45686.h
         Drivers/ST7789/Src/st7789.c
         Drivers/ST7789/Inc/st7789.h
         Drivers/DRV8870/Src/pid.c
@@ -86,6 +88,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     App/Inc
     Drivers/AT24CS32/Inc
     Drivers/ESP32_PID/Inc
+    Drivers/ICM45686/Inc
     Drivers/ST7789/Inc
     Drivers/DRV8870/Inc
     Drivers/interrupt/Inc

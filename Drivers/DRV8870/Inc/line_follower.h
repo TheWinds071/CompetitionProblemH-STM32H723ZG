@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "drv8870.h"
+#include "icm45686.h"
 #include "stm32h7xx_hal.h"
 
 #include <stdint.h>
@@ -47,6 +48,7 @@ typedef struct
   uint8_t gray_active_mask;
   uint8_t gray_active_count;
   uint8_t line_detected;
+  uint8_t imu_ready;
   uint16_t gray_invalid_cycles;
   uint16_t line_lost_cycles;
   uint16_t stop_marker_cycles;
@@ -56,6 +58,9 @@ typedef struct
   int32_t right_encoder_delta;
   float left_target_speed;
   float right_target_speed;
+  float yaw_rate_dps;
+  float yaw_angle_deg;
+  uint32_t imu_read_error_count;
   int16_t left_pwm;
   int16_t right_pwm;
 } LineFollower_StateTypeDef;
@@ -73,7 +78,8 @@ typedef struct
 HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
                                     DRV8870_HandleTypeDef *right_motor,
                                     TIM_HandleTypeDef *left_encoder,
-                                    TIM_HandleTypeDef *right_encoder);
+                                    TIM_HandleTypeDef *right_encoder,
+                                    ICM45686_HandleTypeDef *imu);
 void LineFollower_Start(void);
 void LineFollower_StartStraight(void);
 void LineFollower_Stop(void);

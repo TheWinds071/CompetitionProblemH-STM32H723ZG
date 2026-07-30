@@ -46,6 +46,7 @@ static DRV8870_HandleTypeDef *left_motor_handle;
 static DRV8870_HandleTypeDef *right_motor_handle;
 static TIM_HandleTypeDef *left_encoder_handle;
 static TIM_HandleTypeDef *right_encoder_handle;
+static ICM45686_HandleTypeDef *imu_handle;
 static uint32_t left_encoder_previous;
 static uint32_t right_encoder_previous;
 static PID_HandleTypeDef steering_pid;
@@ -201,13 +202,15 @@ static void LineFollower_ResetControllers(void)
 HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
                                     DRV8870_HandleTypeDef *right_motor,
                                     TIM_HandleTypeDef *left_encoder,
-                                    TIM_HandleTypeDef *right_encoder)
+                                    TIM_HandleTypeDef *right_encoder,
+                                    ICM45686_HandleTypeDef *imu)
 {
   const float steering_effective_limit =
       LINE_FOLLOW_BASE_SPEED_TICKS + LINE_FOLLOW_MAX_SPEED_TICKS;
 
   if ((left_motor == NULL) || (right_motor == NULL) ||
-      (left_encoder == NULL) || (right_encoder == NULL))
+      (left_encoder == NULL) || (right_encoder == NULL) ||
+      (imu == NULL) || (imu->initialized == 0U))
   {
     return HAL_ERROR;
   }
@@ -216,6 +219,7 @@ HAL_StatusTypeDef LineFollower_Init(DRV8870_HandleTypeDef *left_motor,
   right_motor_handle = right_motor;
   left_encoder_handle = left_encoder;
   right_encoder_handle = right_encoder;
+  imu_handle = imu;
 
   if ((HAL_TIM_Encoder_Start(left_encoder_handle, TIM_CHANNEL_ALL) != HAL_OK) ||
       (HAL_TIM_Encoder_Start(right_encoder_handle, TIM_CHANNEL_ALL) != HAL_OK))
@@ -286,7 +290,10 @@ static void LineFollower_StartMode(LineFollower_ModeTypeDef mode)
   control_state.line_position = 0;
   control_state.left_target_speed = 0.0F;
   control_state.right_target_speed = 0.0F;
+  control_state.yaw_rate_dps = 0.0F;
+  control_state.yaw_angle_deg = 0.0F;
   last_line_position = 0;
+  ICM45686_ResetYaw(imu_handle);
   LineFollower_ResetControllers();
   control_mode = mode;
   control_enabled = 1U;
@@ -321,6 +328,7 @@ void LineFollower_Stop(void)
 void LineFollower_Update(void)
 {
   const float dt_seconds = (float)LINE_FOLLOW_CONTROL_PERIOD_MS / 1000.0F;
+  const ICM45686_DataTypeDef *imu_data;
   float steering_correction;
   float left_target;
   float right_target;
@@ -331,6 +339,16 @@ void LineFollower_Update(void)
   if (control_initialized == 0U)
   {
     return;
+  }
+
+  control_state.imu_ready =
+      (uint8_t)(ICM45686_Update(imu_handle, dt_seconds) == HAL_OK);
+  imu_data = ICM45686_GetData(imu_handle);
+  if (imu_data != NULL)
+  {
+    control_state.yaw_rate_dps = imu_data->yaw_rate_dps;
+    control_state.yaw_angle_deg = imu_data->yaw_angle_deg;
+    control_state.imu_read_error_count = imu_data->read_error_count;
   }
 
   control_state.left_encoder_delta =

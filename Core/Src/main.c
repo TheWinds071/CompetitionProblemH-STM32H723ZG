@@ -30,6 +30,7 @@
 /* USER CODE BEGIN Includes */
 #include "drv8870.h"
 #include "esp32_pid_protocol.h"
+#include "icm45686.h"
 #include "line_follower.h"
 #include "pid_storage.h"
 #include "st7789.h"
@@ -56,6 +57,7 @@
 /* USER CODE BEGIN PV */
 static DRV8870_HandleTypeDef motor1_driver;
 static DRV8870_HandleTypeDef motor2_driver;
+static ICM45686_HandleTypeDef imu_driver;
 static uint8_t selected_task;
 /* USER CODE END PV */
 
@@ -173,13 +175,19 @@ int main(void)
   HAL_GPIO_WritePin(MOS_12V_GPIO_Port, MOS_12V_Pin, GPIO_PIN_SET);
   HAL_Delay(20U);
 
+  if (ICM45686_Init(&imu_driver, &hspi5,
+                    SPI5_CS_GPIO_Port, SPI5_CS_Pin) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   if (ST7789_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
   }
 
   if (LineFollower_Init(&motor1_driver, &motor2_driver,
-                        &htim5, &htim3) != HAL_OK)
+                        &htim5, &htim3, &imu_driver) != HAL_OK)
   {
     Error_Handler();
   }
