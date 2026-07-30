@@ -315,10 +315,10 @@ void LineFollower_Update(void)
   {
     control_state.line_detected = LineFollower_ReadGray(&line_position);
     /*
-     * TASK1 stop marker: all three sensors must see black.
+     * TASK1 stop marker: all three sensors must see black in each
+     * consecutive confirmation frame.
      */
-    if ((control_state.gray_active_mask & GRAY_STOP_MARKER_MASK) ==
-        GRAY_STOP_MARKER_MASK)
+    if (control_state.gray_active_mask == GRAY_STOP_MARKER_MASK)
     {
       if (control_state.stop_marker_cycles < UINT16_MAX)
       {

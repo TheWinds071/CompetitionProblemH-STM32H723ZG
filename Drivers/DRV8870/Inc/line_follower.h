@@ -24,7 +24,7 @@ extern "C" {
 #define LINE_FOLLOW_LOST_STOP_MS            1500U
 #define LINE_FOLLOW_LOST_STOP_CYCLES \
     (LINE_FOLLOW_LOST_STOP_MS / LINE_FOLLOW_CONTROL_PERIOD_MS)
-/* Stop marker: L3, L2 and L1 active-low together for consecutive frames. */
+/* Stop when L3, L2 and L1 are active-low together for 5 consecutive frames. */
 #define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 
 #define LINE_FOLLOW_STEERING_KP             0.00070F
