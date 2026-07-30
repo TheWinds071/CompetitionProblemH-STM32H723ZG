@@ -22,7 +22,7 @@ extern "C" {
 #define LINE_FOLLOW_LOST_STOP_MS            1500U
 #define LINE_FOLLOW_LOST_STOP_CYCLES \
     (LINE_FOLLOW_LOST_STOP_MS / LINE_FOLLOW_CONTROL_PERIOD_MS)
-/* Stop when at least 3 sensors are active-high for 5 consecutive frames. */
+/* Stop when at least 3 active-low sensors see black for 5 consecutive frames. */
 #define LINE_FOLLOW_STOP_MARKER_SENSORS      3U
 #define LINE_FOLLOW_STOP_MARKER_CYCLES       5U
 

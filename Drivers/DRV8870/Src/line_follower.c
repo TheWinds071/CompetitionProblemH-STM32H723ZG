@@ -25,13 +25,18 @@ typedef enum
 
 /* Physical order from left to right: L3, L2, L1, M.
  * The center lies between L2 and L1.
- * Black line is GPIO high (active); white background is GPIO low. */
+ * Black line is GPIO low (active); white background is GPIO high.
+ *
+ * The board wiring does not match the historical CubeMX signal labels:
+ * physical L3 -> L1_Pin, physical L2 -> M_Pin,
+ * physical L1 -> L2_Pin, physical M -> L3_Pin.
+ * Array order defines gray_active_mask bit3..bit0 as M, L1, L2, L3. */
 static const GraySensor_TypeDef gray_sensors[GRAY_SENSOR_COUNT] =
 {
-  {L3_GPIO_Port, L3_Pin,  3000},
-  {L2_GPIO_Port, L2_Pin,  1000},
-  {L1_GPIO_Port, L1_Pin, -1000},
-  {M_GPIO_Port,  M_Pin,  -3000}
+  {L1_GPIO_Port, L1_Pin,  3000},
+  {M_GPIO_Port,  M_Pin,   1000},
+  {L2_GPIO_Port, L2_Pin, -1000},
+  {L3_GPIO_Port, L3_Pin, -3000}
 };
 
 static DRV8870_HandleTypeDef *left_motor_handle;
@@ -134,6 +139,9 @@ static uint8_t LineFollower_ReadGray(int16_t *position)
     if (pin_state == GPIO_PIN_SET)
     {
       raw_mask |= (uint8_t)(1U << index);
+    }
+    else
+    {
       active_mask |= (uint8_t)(1U << index);
       weighted_sum += gray_sensors[index].weight;
       ++active_count;
