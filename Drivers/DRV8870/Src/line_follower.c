@@ -65,11 +65,11 @@ static uint8_t LineFollower_IsPIDConfigValid(
                    isfinite(config->speed_ki) &&
                    isfinite(config->speed_kd) &&
                    (config->steering_kp >= 0.0F) &&
-                   (config->steering_kp <= 0.1F) &&
+                   (config->steering_kp <= 0.5F) &&
                    (config->steering_ki >= 0.0F) &&
                    (config->steering_ki <= 1.0F) &&
                    (config->steering_kd >= 0.0F) &&
-                   (config->steering_kd <= 0.1F) &&
+                   (config->steering_kd <= 10.0F) &&
                    (config->speed_kp >= 0.0F) &&
                    (config->speed_kp <= 2000.0F) &&
                    (config->speed_ki >= 0.0F) &&
